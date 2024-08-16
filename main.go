@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -54,6 +53,9 @@ func md5Hash(text string) string {
 // Получение имени файла для сохранения конвертированного видео
 func getReplicaFileName(sourceVideoPath, extension, resolution string) string {
 	hash := md5Hash(sourceVideoPath + extension + resolution)
+	if len(hash) > 12 {
+		hash = hash[len(hash)-12:] // Оставляем только последние 12 символов
+	}
 	return fmt.Sprintf("%s.%s", hash, extension)
 }
 
@@ -109,12 +111,11 @@ func convertVideo(sourcePath, targetPath, resolution string) error {
 }
 
 // Обработка видеофайла
-func processVideoFile(sourceFilePath, convertedFolder, parentFolder string, formats []Format) {
-	fileName := strings.TrimSuffix(filepath.Base(sourceFilePath), filepath.Ext(sourceFilePath))
+func processVideoFile(sourceFilePath, convertedFolder string, formats []Format) {
 	for _, format := range formats {
 		for _, resolution := range format.Resolutions {
 			replicaFileName := getReplicaFileName(sourceFilePath, format.Extension, resolution)
-			replicaFilePath := filepath.Join(convertedFolder, parentFolder, fileName, replicaFileName)
+			replicaFilePath := filepath.Join(convertedFolder, replicaFileName)
 
 			if _, err := os.Stat(replicaFilePath); err == nil {
 				if isFileEmpty(replicaFilePath) {
@@ -158,9 +159,10 @@ func monitorFolder(config *Config) {
 			}
 			return nil
 		}
+		creationYear := info.ModTime().Year() // Получаем год создания
+		replicaFileFolder := filepath.Join(config.ConvertedFilesFolder, fmt.Sprintf("%d", creationYear), md5Hash(filepath.Dir(path)))
 
-		parentFolder := md5Hash(filepath.Dir(path))
-		processVideoFile(path, config.ConvertedFilesFolder, parentFolder, config.Formats)
+		processVideoFile(path, replicaFileFolder, config.Formats)
 		return nil
 	})
 

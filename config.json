@@ -1,6 +1,6 @@
 {
-  "sourceVideoFilesFolder": "sourceVideoFilesFolder",
-  "convertedFilesFolder": "convertedVideoFilesFolder",
+  "sourceVideoFilesFolder": "../sourceVideoFilesFolder",
+  "convertedFilesFolder": "../convertedVideoFilesFolder",
   "daysAgo": 2,
   "formats": [
     {
