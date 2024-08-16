@@ -1,0 +1,11 @@
+{
+  "sourceVideoFilesFolder": "sourceVideoFilesFolder",
+  "convertedFilesFolder": "convertedVideoFilesFolder",
+  "daysAgo": 2,
+  "formats": [
+    {
+      "extension": "mp4",
+      "resolutions": ["720p"]
+    }
+  ]
+}
