@@ -142,17 +142,26 @@ func processVideoFile(sourceFilePath, convertedFolder string, formats []Format) 
 	}
 }
 
-// Мониторинг папки
 func monitorFolder(config *Config) {
-	sourceDir := config.SourceVideoFilesFolder
+	// Получаем текущий год
+	currentYear := time.Now().Year()
+
+	// Строим путь к папке для текущего года
+	yearFolder := filepath.Join(config.SourceVideoFilesFolder, fmt.Sprintf("%d", currentYear))
 	daysAgoDuration := time.Duration(-config.DaysAgo) * 24 * time.Hour
 	cutoffTime := time.Now().Add(daysAgoDuration)
 
-	err := filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+	// Проверяем, существует ли папка для текущего года
+	if _, err := os.Stat(yearFolder); os.IsNotExist(err) {
+		log.Printf("Папка для текущего года не существует: %s", yearFolder)
+		return
+	}
+
+	err := filepath.Walk(yearFolder, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-
+		log.Printf("path %s\n", path)
 		if info.IsDir() {
 			if info.ModTime().Before(cutoffTime) {
 				return filepath.SkipDir
