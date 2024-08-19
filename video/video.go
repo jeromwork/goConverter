@@ -4,18 +4,50 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"path/filepath"
 
+	"goConverter/config"
 	"goConverter/fileutil"
 )
 
-// ConvertVideo конвертирует видео с использованием ffmpeg
-func Convert(sourcePath, targetPath, resolution string) error {
+// Convert выполняет конвертацию видео или изображения с учетом переданных параметров
+func Convert(sourcePath, targetPath string, converterConfig config.ConverterConfig) error {
+	// Получаем параметры из конфигурации
+	resolution := converterConfig.Resolution
+	extension := converterConfig.Extension
+	watermarkImage := converterConfig.WatermarkImage
+	// Дополнительные параметры для ffmpeg можно добавить здесь
+	// Пример: битрейт, частота кадров и т.д.
+	// additionalParams := converterConfig["additionalParams"].(string) // например, "-b:v 1M"
+
 	scale := resolutionToScale(resolution)
 	if scale == "" {
 		return fmt.Errorf("неизвестное разрешение: %s", resolution)
 	}
 
-	cmd := exec.Command("ffmpeg", "-y", "-i", sourcePath, "-vf", "scale="+scale, targetPath)
+	// Изменяем расширение целевого файла на указанное в конфигурации (если необходимо)
+	if filepath.Ext(targetPath) != "."+extension {
+		targetPath = targetPath[:len(targetPath)-len(filepath.Ext(targetPath))] + "." + extension
+	}
+
+	if watermarkImage == "" {
+		watermarkImage = "watermarkEastclinicWhite.png"
+	}
+	absWatermarkPath, err := filepath.Abs(watermarkImage)
+	if err != nil {
+		return fmt.Errorf("не удалось получить абсолютный путь к изображению водяного знака: %v", err)
+	}
+
+	// Команду для ffmpeg строим с учетом дополнительных параметров
+	cmdArgs := []string{
+		"-y", "-i", sourcePath,
+		"-i", absWatermarkPath,
+		"-filter_complex", "scale=" + scale + ",overlay=W-w-30:H-h-30",
+		targetPath,
+	}
+
+	// Команда для ffmpeg
+	cmd := exec.Command("ffmpeg", cmdArgs...)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -33,6 +65,7 @@ func Convert(sourcePath, targetPath, resolution string) error {
 	return nil
 }
 
+// resolutionToScale преобразует разрешение в параметры масштабирования для ffmpeg
 func resolutionToScale(resolution string) string {
 	switch resolution {
 	case "360p":

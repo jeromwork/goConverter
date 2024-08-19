@@ -2,10 +2,21 @@
   "sourceVideoFilesFolder": "../sourceVideoFilesFolder",
   "convertedFilesFolder": "../convertedVideoFilesFolder",
   "daysAgo": 2,
-  "formats": [
-    {
+  "converts":{
+    "defaultVideo":{
       "extension": "mp4",
-      "resolutions": ["720p"]
+      "resolution": "720p",
+      "watermarkText":"Eastclinic.ru видео"
+    },
+    "defaultImage":{
+      "extension": "webp",
+      "resolution": "720p",
+      "watermarkText":"Eastclinic.ru фото"
+    },
+    "reviewVideo":{
+      "extension": "mp4",
+      "resolution": "1080p",
+      "watermarkText":"Eastclinic.ru review"
     }
-  ]
+  }
 }

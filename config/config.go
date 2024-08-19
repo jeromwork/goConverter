@@ -7,16 +7,17 @@ import (
 
 // Config структура для хранения настроек
 type Config struct {
-	SourceVideoFilesFolder string   `json:"sourceVideoFilesFolder"`
-	ConvertedFilesFolder   string   `json:"convertedFilesFolder"`
-	DaysAgo                int      `json:"daysAgo"`
-	Formats                []Format `json:"formats"`
+	SourceVideoFilesFolder string                     `json:"sourceVideoFilesFolder"`
+	ConvertedFilesFolder   string                     `json:"convertedFilesFolder"`
+	DaysAgo                int                        `json:"daysAgo"`
+	Converts               map[string]ConverterConfig `json:"converts"`
 }
 
-// Format структура для хранения форматов и разрешений
-type Format struct {
-	Extension   string   `json:"extension"`
-	Resolutions []string `json:"resolutions"`
+// ConverterConfig структура для хранения настроек конвертера
+type ConverterConfig struct {
+	Extension      string `json:"extension"`
+	Resolution     string `json:"resolution"`
+	WatermarkImage string `json:"watermarkImage"`
 }
 
 // LoadConfig загружает настройки из файла

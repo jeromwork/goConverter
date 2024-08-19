@@ -40,7 +40,7 @@ func Run(config *config.Config) {
 		creationYear := info.ModTime().Year()
 		replicaFileFolder := filepath.Join(config.ConvertedFilesFolder, fmt.Sprintf("%d", creationYear), hashutil.Md5Hash(filepath.Dir(path)))
 
-		ProcessFile(path, replicaFileFolder, config.Formats)
+		ProcessFile(path, replicaFileFolder, config)
 		return nil
 	})
 
@@ -49,47 +49,57 @@ func Run(config *config.Config) {
 	}
 }
 
-func ProcessFile(sourceFilePath, convertedFolder string, formats []config.Format) {
-	for _, format := range formats {
-		for _, resolution := range format.Resolutions {
-			replicaFileName := hashutil.GetReplicaFileName(sourceFilePath, format.Extension, resolution)
-			replicaFilePath := filepath.Join(convertedFolder, replicaFileName)
+func ProcessFile(sourceFilePath, convertedFolder string, cfg *config.Config) {
+	extension := strings.ToLower(filepath.Ext(sourceFilePath))
+	mimeType := mime.TypeByExtension(extension)
 
-			if _, err := os.Stat(replicaFilePath); err == nil {
-				if fileutil.IsFileEmpty(replicaFilePath) {
-					log.Printf("Файл существует, но пустой, повторная конвертация: %s", replicaFilePath)
-				} else {
-					log.Printf("Файл уже существует, пропускаем: %s", replicaFilePath)
-					continue
-				}
-			}
+	// Извлекаем ключ конвертера из имени файла
+	baseFileName := filepath.Base(sourceFilePath)
+	fileNameParts := strings.Split(baseFileName, "_")
+	converterKey := strings.Split(fileNameParts[len(fileNameParts)-1], ".")[0]
 
-			if err := os.MkdirAll(filepath.Dir(replicaFilePath), 0755); err != nil {
-				log.Printf("Ошибка создания папки: %v", err)
-				continue
-			}
+	// Определяем настройки конвертера
+	var converterConfig config.ConverterConfig
+	if strings.HasPrefix(mimeType, "video/") {
+		converterConfig = cfg.Converts["defaultVideo"]
+	} else if strings.HasPrefix(mimeType, "image/") {
+		converterConfig = cfg.Converts["defaultImage"]
+	}
 
-			extension := strings.ToLower(filepath.Ext(sourceFilePath))
-			mimeType := mime.TypeByExtension(extension)
-			var err error
-			if strings.HasPrefix(mimeType, "video/") {
-				err = video.Convert(sourceFilePath, replicaFilePath, resolution)
-			} else if strings.HasPrefix(mimeType, "image/") {
-				err = video.Convert(sourceFilePath, replicaFilePath, resolution)
-			} else {
-				log.Printf("Неподдерживаемый тип файла: %s", sourceFilePath)
-			}
+	// Переопределяем настройки, если найден ключ конвертера
+	if customConfig, exists := cfg.Converts[converterKey]; exists {
+		converterConfig = customConfig
+	}
 
-			if err == nil {
-				break // Если конвертация прошла успешно, выходим из цикла
-			}
-			// for {
-			// 	err := ConvertVideo(sourceFilePath, replicaFilePath, resolution)
-			// 	if err == nil {
-			// 		break // Если конвертация прошла успешно, выходим из цикла
-			// 	}
-			// 	log.Printf("Попытка повторной конвертации %s\n", sourceFilePath)
-			// }
+	// Генерируем имя и путь для файла-реплики
+	replicaFileName := hashutil.GetReplicaFileName(sourceFilePath, converterConfig.Extension, converterConfig.Resolution)
+	replicaFilePath := filepath.Join(convertedFolder, replicaFileName)
+
+	// Проверяем, существует ли файл-реплика
+	if _, err := os.Stat(replicaFilePath); err == nil {
+		if fileutil.IsFileEmpty(replicaFilePath) {
+			log.Printf("Файл существует, но пустой, повторная конвертация: %s", replicaFilePath)
+		} else {
+			log.Printf("Файл уже существует, пропускаем: %s", replicaFilePath)
+			return
 		}
+	}
+
+	// Создаем папку для файла-реплики
+	if err := os.MkdirAll(filepath.Dir(replicaFilePath), 0755); err != nil {
+		log.Printf("Ошибка создания папки: %v", err)
+		return
+	}
+
+	// Выполняем конвертацию в зависимости от типа файла
+	var err error
+	if strings.HasPrefix(mimeType, "video/") {
+		err = video.Convert(sourceFilePath, replicaFilePath, converterConfig)
+	} else if strings.HasPrefix(mimeType, "image/") {
+		// err = photo.Convert(sourceFilePath, replicaFilePath, converterConfig)
+	}
+
+	if err != nil {
+		log.Printf("Ошибка конвертации файла %s: %v", sourceFilePath, err)
 	}
 }
