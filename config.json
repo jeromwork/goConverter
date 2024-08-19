@@ -1,26 +1,30 @@
 {
-  "sourceVideoFilesFolder": "../sourceVideoFilesFolder",
-  "convertedFilesFolder": "../convertedVideoFilesFolder",
+  "sourceVideoFilesFolder": "C:/work/eastclinic/BackendLaravel/public/content-original",
+  "convertedFilesFolder": "C:/work/eastclinic/BackendLaravel/public/content",
   "daysAgo": 2,
   "converts":{
     "defaultVideo":{
       "extension": "mp4",
       "resolution": "360p",
-      "watermark":"true"
+      "watermark":"true",
+      "key":"360p"
     },
     "defaultImage":{
       "extension": "webp",
       "resolution": "720p",
-      "watermark":"true"
+      "watermark":"true",
+      "key":"720p"
     },
     "reviewVideo":{
       "extension": "mp4",
       "resolution": "1080p",
+      "key":"1080p",
       "watermark":"true"
     },
     "reviewImage":{
       "extension": "webp",
       "resolution": "360p",
+      "key":"360p",
       "watermarkPosition": "W-w-20:H-h-20"
     }
 
