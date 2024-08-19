@@ -2,53 +2,70 @@ package video
 
 import (
 	"fmt"
+	"goConverter/config"
+	"goConverter/fileutil"
 	"log"
 	"os/exec"
 	"path/filepath"
-
-	"goConverter/config"
-	"goConverter/fileutil"
 )
 
-// Convert выполняет конвертацию видео или изображения с учетом переданных параметров
+// Convert выполняет конвертацию видео с учетом переданных параметров
 func Convert(sourcePath, targetPath string, converterConfig config.ConverterConfig) error {
 	// Получаем параметры из конфигурации
 	resolution := converterConfig.Resolution
 	extension := converterConfig.Extension
 	watermarkImage := converterConfig.WatermarkImage
-	// Дополнительные параметры для ffmpeg можно добавить здесь
-	// Пример: битрейт, частота кадров и т.д.
-	// additionalParams := converterConfig["additionalParams"].(string) // например, "-b:v 1M"
+	watermarkPosition := converterConfig.WatermarkPosition
 
-	scale := resolutionToScale(resolution)
+	if watermarkImage == "" && converterConfig.Watermark != "" {
+		watermarkImage = "watermarkEastclinicWhite.png"
+	}
+	if watermarkPosition == "" && (watermarkImage != "" || converterConfig.Watermark != "") {
+		watermarkPosition = "W-w-20:H-h-20"
+	}
+
+	// Проверка разрешения и получение параметра масштабирования
+	scale := fileutil.ResolutionToScale(resolution)
 	if scale == "" {
 		return fmt.Errorf("неизвестное разрешение: %s", resolution)
 	}
 
-	// Изменяем расширение целевого файла на указанное в конфигурации (если необходимо)
+	// Изменение расширения целевого файла
 	if filepath.Ext(targetPath) != "."+extension {
 		targetPath = targetPath[:len(targetPath)-len(filepath.Ext(targetPath))] + "." + extension
 	}
 
-	if watermarkImage == "" {
-		watermarkImage = "watermarkEastclinicWhite.png"
-	}
+	// Получение абсолютного пути к водяному знаку
 	absWatermarkPath, err := filepath.Abs(watermarkImage)
 	if err != nil {
 		return fmt.Errorf("не удалось получить абсолютный путь к изображению водяного знака: %v", err)
 	}
 
-	// Команду для ffmpeg строим с учетом дополнительных параметров
+	// Основной фильтр масштабирования
+	filterComplex := fmt.Sprintf(
+		"[0:v]scale=%s,setsar=1[scaled];[1:v]scale=w=-1:h=ih*0.3[wm]",
+		scale,
+	)
+
+	// Добавляем фильтр наложения водяного знака, если требуется
+	if watermarkPosition != "" {
+		filterComplex += fmt.Sprintf(";[scaled][wm]overlay=%s", watermarkPosition)
+	} else {
+		filterComplex += ";[scaled][wm]overlay=shortest=1"
+	}
+
+	// Логирование фильтра для отладки
+	log.Printf("Используемый фильтр complex: %s\n", filterComplex)
+
 	cmdArgs := []string{
 		"-y", "-i", sourcePath,
 		"-i", absWatermarkPath,
-		"-filter_complex", "scale=" + scale + ",overlay=W-w-30:H-h-30",
+		"-filter_complex", filterComplex,
 		targetPath,
 	}
 
-	// Команда для ffmpeg
+	// Выполнение команды ffmpeg
 	cmd := exec.Command("ffmpeg", cmdArgs...)
-
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("Ошибка конвертации %s: %v\n", sourcePath, err)
@@ -56,6 +73,7 @@ func Convert(sourcePath, targetPath string, converterConfig config.ConverterConf
 		return err
 	}
 
+	// Проверка, что файл не пустой
 	if fileutil.IsFileEmpty(targetPath) {
 		log.Printf("Файл %s пустой после конвертации, повторная конвертация...\n", targetPath)
 		return fmt.Errorf("пустой файл после конвертации")
@@ -63,18 +81,4 @@ func Convert(sourcePath, targetPath string, converterConfig config.ConverterConf
 
 	log.Printf("Успешная конвертация %s в %s с разрешением %s\n", sourcePath, targetPath, resolution)
 	return nil
-}
-
-// resolutionToScale преобразует разрешение в параметры масштабирования для ffmpeg
-func resolutionToScale(resolution string) string {
-	switch resolution {
-	case "360p":
-		return "640:360"
-	case "720p":
-		return "1280:720"
-	case "1080p":
-		return "1920:1080"
-	default:
-		return "" // Для неизвестного разрешения вернем пустую строку
-	}
 }

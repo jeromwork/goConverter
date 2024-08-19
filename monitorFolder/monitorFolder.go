@@ -12,6 +12,7 @@ import (
 	"goConverter/config"
 	"goConverter/fileutil"
 	"goConverter/hashutil"
+	"goConverter/image"
 	"goConverter/video"
 )
 
@@ -96,7 +97,7 @@ func ProcessFile(sourceFilePath, convertedFolder string, cfg *config.Config) {
 	if strings.HasPrefix(mimeType, "video/") {
 		err = video.Convert(sourceFilePath, replicaFilePath, converterConfig)
 	} else if strings.HasPrefix(mimeType, "image/") {
-		// err = photo.Convert(sourceFilePath, replicaFilePath, converterConfig)
+		err = image.Convert(sourceFilePath, replicaFilePath, converterConfig)
 	}
 
 	if err != nil {
